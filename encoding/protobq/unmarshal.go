@@ -37,6 +37,10 @@ type UnmarshalOptions struct {
 
 	// If DiscardUnknown is set, unknown fields are ignored.
 	DiscardUnknown bool
+
+	// If UseJSONNames is set, the JSON names are used to look up fields in the
+	// proto message. Otherwise, the proto names are used.
+	UseJSONNames bool
 }
 
 // Unmarshal reads the given BigQuery row and populates the given proto.Message using
@@ -60,10 +64,12 @@ func (o UnmarshalOptions) unmarshalMessage(
 ) error {
 	oneofFields := make(map[protoreflect.Name]string)
 	for bqFieldName, bqField := range bqMessage {
-		fieldName := protoreflect.Name(bqFieldName)
-		field := message.Descriptor().Fields().ByName(fieldName)
+
+		field := o.getFieldDescriptor(bqFieldName, message)
+
 		if field == nil {
-			if o.Schema.UseOneofFields && o.isOneOfField(fieldName, message) {
+			fieldName := protoreflect.Name(bqFieldName)
+			if o.Schema.UseOneofFields && o.isOneOfField(bqFieldName, message) {
 				stringVal, ok := bqField.(string)
 				if !ok {
 					return fmt.Errorf(
@@ -105,8 +111,10 @@ func (o UnmarshalOptions) unmarshalMessage(
 	return nil
 }
 
-func (o UnmarshalOptions) isOneOfField(fieldName protoreflect.Name, message protoreflect.Message) bool {
-	descriptor := message.Descriptor().Oneofs().ByName(fieldName)
+func (o UnmarshalOptions) isOneOfField(bqFieldName string, message protoreflect.Message) bool {
+	field := o.getFieldDescriptor(bqFieldName, message)
+
+	descriptor := message.Descriptor().Oneofs().ByName(field.Name())
 	return descriptor != nil
 }
 
@@ -120,7 +128,7 @@ func (o UnmarshalOptions) ensureOneofsAreSet(
 		if field != nil {
 			continue
 		}
-		field = message.Descriptor().Fields().ByName(protoreflect.Name(value))
+		field = o.getFieldDescriptor(value, message)
 		fieldValue := message.NewField(field)
 		message.Set(field, fieldValue)
 	}
@@ -654,4 +662,12 @@ func (o UnmarshalOptions) unmarshalEnumScalar(
 		)
 	}
 	return protoreflect.ValueOfEnum(enumVal.Number()), nil
+}
+
+func (o UnmarshalOptions) getFieldDescriptor(bqFieldName string, message protoreflect.Message,
+) protoreflect.FieldDescriptor {
+	if o.UseJSONNames {
+		return message.Descriptor().Fields().ByJSONName(bqFieldName)
+	}
+	return message.Descriptor().Fields().ByName(protoreflect.Name(bqFieldName))
 }
