@@ -41,11 +41,19 @@ func (o UnmarshalOptions) loadMessage(
 	}
 	for i, bqFieldSchema := range bqSchema {
 		bqField := bqMessage[i]
-		fieldName := protoreflect.Name(bqFieldSchema.Name)
-		field := message.Descriptor().Fields().ByName(fieldName)
+		bqFieldName := bqFieldSchema.Name
+
+		var field protoreflect.FieldDescriptor
+
+		if o.UseJsonNames {
+			field = message.Descriptor().Fields().ByJSONName(bqFieldName)
+		} else {
+			field = message.Descriptor().Fields().ByName(protoreflect.Name(bqFieldName))
+		}
+
 		if field == nil {
-			if !o.DiscardUnknown && !message.Descriptor().ReservedNames().Has(fieldName) {
-				return fmt.Errorf("unknown field: %s", fieldName)
+			if !o.DiscardUnknown && !message.Descriptor().ReservedNames().Has(protoreflect.Name(bqFieldName)) {
+				return fmt.Errorf("unknown field: %s", bqFieldName)
 			}
 			continue
 		}

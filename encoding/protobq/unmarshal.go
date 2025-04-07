@@ -37,6 +37,9 @@ type UnmarshalOptions struct {
 
 	// If DiscardUnknown is set, unknown fields are ignored.
 	DiscardUnknown bool
+
+	// Use proto json names instead field names
+	UseJsonNames bool
 }
 
 // Unmarshal reads the given BigQuery row and populates the given proto.Message using
