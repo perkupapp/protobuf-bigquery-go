@@ -38,8 +38,9 @@ type UnmarshalOptions struct {
 	// If DiscardUnknown is set, unknown fields are ignored.
 	DiscardUnknown bool
 
-	// Use proto json names instead field names
-	UseJsonNames bool
+	// If UseJSONNames is set, the JSON names are used to look up fields in the
+	// proto message. Otherwise, the proto names are used.
+	UseJSONNames bool
 }
 
 // Unmarshal reads the given BigQuery row and populates the given proto.Message using
@@ -665,7 +666,7 @@ func (o UnmarshalOptions) unmarshalEnumScalar(
 
 func (o UnmarshalOptions) getFieldDescriptor(bqFieldName string, message protoreflect.Message,
 ) protoreflect.FieldDescriptor {
-	if o.UseJsonNames {
+	if o.UseJSONNames {
 		return message.Descriptor().Fields().ByJSONName(bqFieldName)
 	}
 	return message.Descriptor().Fields().ByName(protoreflect.Name(bqFieldName))
